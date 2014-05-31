@@ -1,0 +1,213 @@
+[color=#FFFFFF][size=large][align=center]Easy DNS list scanning![/align][/size][/color]
+Aye, welcome to my thread..
+Alright lets get right too it..
+
+[size=large][color=#FFFFFF]Things needed:[/color][/size]
+1. 1Gbps port server (vps or dedi will work)
+2. perl (with Net::DNS, Net::Pcap, Net::Pcap::Easy)
+3. A Brain
+5. Zmap
+
+
+[size=large][color=#FFFFFF]Table of Contents:[/color][/size]
+0x1: Getting Ready
+0x2: Building Packet
+0x3: Starting Filter
+0x4: Starting Scan
+0x5: Manually Filtering Output
+
+
+[size=medium][color=#FFFFFF]0x1 - Getting Ready:[/color][/size]
+
+[color=#FFFFFF]Step 1: Download Perl on your server:[/color]
+[color=#FF6347]Debain / Ubuntu:[/color]
+[code]apt-get install perl[/code]
+[color=#87CEFA]Redhat / Centos:[/color]
+[code]yum install perl[/code]
+
+[color=#FFFFFF]Step 2: Install Perl modules:[/color]
+[color=#FF6347]Debain / Ubuntu: [/color]
+[code]apt-get install cpan
+cpan install Net::DNS
+cpan install Net::Pcap
+cpan install Net::Pcap::Easy[/code]
+
+[color=#87CEFA]Redhat / Centos:[/color]
+[code]yum install cpan
+cpan install Net::DNS
+cpan install Net::Pcap
+cpan install Net::Pcap::Easy[/code]
+
+[color=#FF0000]**If this does not work use commands below**[/color]
+[code]wget http://search.cpan.org/CPAN/authors/id/S/SA/SAPER/Net-Pcap-0.17.tar.gz
+tar -xvf Net-Pcap-0.17.tar.gz
+cd Net-Pcap-0.17
+perl Makefile.pl
+make
+make install
+cd ../
+rm -rf Net-Pcap-0.17*
+
+wget http://search.cpan.org/CPAN/authors/id/J/JE/JETTERO/Net-Pcap-Easy-1.4207.tar.gz
+tar -xvf Net-Pcap-Easy-1.4207.tar.gz
+cd Net-Pcap-Easy-1.4207
+perl Makefile.pl
+make
+make install
+cd ../
+rm -rf Net-Pcap-Easy*
+
+wget http://search.cpan.org/CPAN/authors/id/N/NL/NLNETLABS/Net-DNS-0.76.tar.gz
+tar -xvf Net-DNS-0.76.tar.gz
+cd Net-DNS-0.76
+perl Makefile.pl
+make
+make install
+cd ../
+rm -rf Net-DNS-0.76*
+
+[/code]
+
+[color=#FFFFFF]Step 3: Install Zmap:[/color]
+Debain / Ubuntu:
+[code]apt-get install build-essential cmake libgmp3-dev libpcap-dev gengetopt byacc flex[/code]
+Redhat / Centos:
+[code]yum install cmake gmp gmp-devel libpcap-devel gengetopt byacc flex[/code]
+
+Then Download and install zmap:
+[code]wget https://github.com/zmap/zmap/archive/v1.2.0.tar.gz
+tar -xvf v1.2.0.tar.gz
+cd zmap-1.2.0
+cmake -DENABLE_HARDENING=ON
+make
+make install[/code]
+
+Ok, we are done with installing the things we need C:
+
+[color=#FFFFFF][size=medium]0x2 - Building Packet:[/size][/color]
+Here we are going to use one of my scripts to build a packet to use with zmap.
+This will include the domain your going to use to scan..
+
+[color=#FFFFFF]Step 1: Download buildpacket.pl[/color]
+[quote]wget https://raw.githubusercontent.com/Vypor/DnsScanTutorial/master/buildpacket.pl[/quote]
+
+Script Usage: 
+[code]root@localhost:~# perl buildpacket.pl
+Usage: perl buildpacket.pl <domain>
+ Example: perl buildpacket.pl 1x1.cz
+ Coded by Vypor, https://github.com/Vypor[/code]
+
+[size=medium][color=#FFFFFF]Step 2: Build the packet with the script (this is easy)[/color][/size]
+Now we gotta build the packet for zmap to use. this can be done by simply typing:
+[code]perl buildpacket.pl domain.com[/code]
+
+[color=#FF0000]**domain.com is the domain your going to use to amp**[/color]
+Anyways, To the next step!
+
+[size=medium][color=#FFFFFF]0x3 - Starting Filter:[/color][/size]
+
+[color=#FFFFFF]Step 1: Download dnsfilter.pl[/color]
+[code]wget https://raw.githubusercontent.com/Vypor/DnsScanTutorial/master/DNSfilter.pl[/code]
+
+[color=#FFFFFF]Step 2: run the filter script [/color]
+[color=#FF0000]**Must be ran before scan starts to get full scan**[/color]
+[code]perl DNSfilter.pl dnslistoutput.txt 3000 1x1.cz[/code]
+
+[color=#FF0000]**Note, the domain MUST be the same one you used in your buildpacket.pl**[/color]
+
+[code]root@localhost:~# perl filt.pl 
+Usage: perl filter.pl <outputfile> <minbytereply> <domain>
+ Example: perl filter.pl output.txt 3000 1x1.cz
+ Coded by Vypor, https://github.com/Vypor[/code]
+
+[size=medium][color=#FFFFFF]0x4 - Starting Scan:[/color][/size]
+
+Woo! you made it here, congrats.. 
+Now we gotta start the dns scan itself, Before this make sure your dnsfilter.pl script is running, and open a new window in your server with your SSH program.
+
+[color=#FFFFFF]Step 1: Run zmap and listen for data on other screen[/color]
+
+Alright, we need to run zmap.. this is easy command is below.
+[code]zmap -M udp -p 53 --probe-args=file:1x1.cz.pkt[/code]
+
+Now, 1x1.cz.pkt is where your buildpacket.pl output is (in the same folder as buildpacket.pl)
+
+After your run the command you will begin to see this on your screen:
+root@localhost:~# zmap -M udp -p 53 --probe-args=file:1x1.cz.pkt 
+[code]May 31 10:07:04.554 [INFO] zmap: output module: csv
+May 31 10:07:04.554 [WARN] csv: no output file selected. no results will be provided.
+ 0:01 0%; send: 875419 875 Kp/s (772 Kp/s avg); recv: 1182 1.18 Kp/s (1.04 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.14%
+ 0:02 0%; send: 1750345 875 Kp/s (820 Kp/s avg); recv: 2761 1.58 Kp/s (1.29 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.16%
+ 0:03 0%; send: 2626753 876 Kp/s (838 Kp/s avg); recv: 4411 1.65 Kp/s (1.41 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.17%
+ 0:04 0%; send: 3501963 875 Kp/s (847 Kp/s avg); recv: 6071 1.66 Kp/s (1.47 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.17%
+ 0:05 0% (1h12m left); send: 4377578 876 Kp/s (852 Kp/s avg); recv: 7817 1.75 Kp/s (1.52 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.18%
+ 0:06 0% (1h12m left); send: 5251892 874 Kp/s (856 Kp/s avg); recv: 9418 1.60 Kp/s (1.53 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.18%
+ 0:07 0% (1h11m left); send: 6120570 869 Kp/s (858 Kp/s avg); recv: 11068 1.65 Kp/s (1.55 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.18%
+ 0:08 0% (1h11m left); send: 6986364 866 Kp/s (859 Kp/s avg); recv: 12727 1.66 Kp/s (1.56 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.18%
+ 0:09 0% (1h11m left); send: 7851315 865 Kp/s (859 Kp/s avg); recv: 14365 1.64 Kp/s (1.57 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.18%
+ 0:10 0% (1h11m left); send: 8717009 866 Kp/s (860 Kp/s avg); recv: 15985 1.62 Kp/s (1.58 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.18%
+ 0:11 0% (1h11m left); send: 9585269 868 Kp/s (861 Kp/s avg); recv: 17805 1.82 Kp/s (1.60 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:12 0% (1h11m left); send: 10455611 870 Kp/s (861 Kp/s avg); recv: 19565 1.76 Kp/s (1.61 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:13 0% (1h11m left); send: 11325755 870 Kp/s (862 Kp/s avg); recv: 21230 1.66 Kp/s (1.62 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:14 0% (1h11m left); send: 12196419 871 Kp/s (863 Kp/s avg); recv: 22900 1.67 Kp/s (1.62 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:15 0% (1h11m left); send: 13068931 872 Kp/s (863 Kp/s avg); recv: 24676 1.77 Kp/s (1.63 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:16 0% (1h11m left); send: 13938015 869 Kp/s (864 Kp/s avg); recv: 26355 1.68 Kp/s (1.63 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:17 0% (1h11m left); send: 14812427 874 Kp/s (864 Kp/s avg); recv: 28074 1.72 Kp/s (1.64 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+ 0:18 0% (1h11m left); send: 15683980 871 Kp/s (865 Kp/s avg); recv: 29779 1.70 Kp/s (1.64 Kp/s avg); drops: 0 p/s (0 p/s avg); hits: 0.19%
+May 31 10:07:23.717 [WARN] monitor: Dropped 1841 packets in the last second, (1842 total dropped (pcap: 1842 + iface: 0))
+ 0:19 0% (1h11m left); send: 16479319 795 Kp/s (861 Kp/s avg); recv: 31350 1.57 Kp/s (1.64 Kp/s avg); drops: 1.84 Kp/s (96 p/s avg); hits: 0.19%[/code]
+
+Its fine if packets drop. it [color=#FF0000][b]WILL [/b][/color]happen..
+Now, look on the screen running DNSfilter.pl it will look something like this:
+
+
+[code]root@localhost:~# perl DNSfilter.pl output.txt 1000 1x1.cz
+10:07:31 193.239.186.91 ->X.X.X.X 1764
+10:07:31 89.174.18.233 ->X.X.X.X 1472
+10:07:31 79.133.62.62 ->X.X.X.X 1764
+10:07:31 163.20.133.1 ->X.X.X.X 4094
+10:07:31 113.160.24.26 ->X.X.X.X 1248
+10:07:31 5.70.201.32 ->X.X.X.X 1113
+10:07:31 197.164.20.131 ->X.X.X.X 1508
+10:07:31 203.146.152.189 ->X.X.X.X 1082
+10:07:31 179.192.243.146 ->X.X.X.X 3994
+10:07:31 208.58.53.99 ->X.X.X.X 4038
+10:07:31 83.69.88.178 ->X.X.X.X 4027
+10:07:31 125.177.151.92 ->X.X.X.X 1127[/code]
+
+[color=#FF0000]**X.X.X.X Is my server IP, its removed**[/color]
+
+The filter script is formatted:
+[code]Time : Incoming_IP -> Outgoing_IP bytesize[/code]
+But the output will be just like a regular DNS list:
+[code]193.239.186.91 1x1.cz 1764
+89.174.18.233 1x1.cz 1472
+79.133.62.62 1x1.cz 1764
+163.20.133.1 1x1.cz 4094
+113.160.24.26 1x1.cz 1248
+5.70.201.32 1x1.cz 1113
+197.164.20.131 1x1.cz 1508
+203.146.152.189 1x1.cz 1082
+179.192.243.146 1x1.cz 3994
+208.58.53.99 1x1.cz 4038
+83.69.88.178 1x1.cz 4027
+125.177.151.92 1x1.cz 1127[/code]
+
+C: Now that we have our list, we have an extra option.. We can Manually filter it.
+
+[color=#FFFFFF][size=medium]0x5 - Manually Filtering Output:[/size][/color]
+
+[color=#FFFFFF]Step 1: Find your DNS list file[/color]
+
+[color=#FFFFFF]Step 2: Use your linux command line and sort your list.[/color]
+
+Now the command below will do  things, first thing being reading the list, then filtering the third column, then sorting for duplicates, then randomizing the list, and finally the output file.
+
+Now lets say your list name is dnslist.txt and you want to sort it to everything above 4000 bytesize, and then output it to newdnslist.txt heres the command:
+[code]cat dnslist.txt | awk '$3 >= 4000' | sort -u | sort -R > newdnslist.txt[/code]
+
+[color=#FF0000]Command Explanation: [/color]"cat" reads the file into a pipe "|" , awk then sorts $3 "the third column" for any number 4000 and over, then it pipes again, sorts for unique lines, then pipes, and randomizes the lines of the list, then ">" outputs the lines to a file.
+
+
+[color=#FFFFFF]Tutorial Made by Vypor, Also made so it can be easily modified for other amp methods.
+https://github.com/Vypor[/color]
